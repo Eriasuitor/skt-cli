@@ -11,6 +11,8 @@ const ora = require('ora')
 const chalk = require('chalk')
 const logSymbols = require('log-symbols')
 const rimraf = require("rimraf")
+const fse = require('fs-extra')
+const child_process = require('child_process')
 
 const skeletonUrl = 'https://github.com/Eriasuitor/node-server-skeleton.git'
 const skeletonRepo = 'github:Eriasuitor/node-server-skeleton#master'
@@ -26,12 +28,12 @@ Promise.resolve().then(async () => {
 	let safeMode = false
 	if (!projectName) {
 		safeMode = true
-		console.log(logSymbols.warning, chalk.default.yellowBright('project name was not specified, project will be created in the current directory'))
+		console.log(logSymbols.warning, chalk.default.yellow('project name was not specified, project will be created in the current directory'))
 		projectName = path.basename(pwd)
 		answer = await inquirer.prompt([
 			{
 				name: 'useCurrentDir',
-				message: `all files in the current directory will be deleted! do you want to create a project named "${projectName}" in the current directory?`,
+				message: `do you want to create a project named "${projectName}" in the current directory?`,
 				default: false,
 				type: 'confirm',
 				prefix: logSymbols.warning
@@ -40,13 +42,14 @@ Promise.resolve().then(async () => {
 		if(!answer.useCurrentDir) {
 			return program.help()
 		}
+		console.log(logSymbols.info, "please insure that no duplicated files or folders was existed in this directory")
 		projectPath = pwd
 	}
 	projectPath =  projectPath || path.join(pwd, projectName)
 	const dirs = fs.readdirSync(pwd)
 	const duplicatedProject = dirs.find(dir => dir === projectName && fs.statSync(path.join(pwd, projectName)).isDirectory())
 	if (duplicatedProject) {
-		return console.error(logSymbols.warning, chalk.red(`project ${projectName} already existed`))
+		return console.error(logSymbols.error, chalk.red(`project ${projectName} already existed`))
 	}
 	try {
 		let projectInfo = {
@@ -54,23 +57,16 @@ Promise.resolve().then(async () => {
 			version: '1.0.0',
 			desc: ''
 		}
-		// projectInfo = await inquirer.prompt([
-		// 	{
-		// 		name: 'name',
-		// 		message: 'project name',
-		// 		default: projectInfo.name
-		// 	}, {
-		// 		name: 'version',
-		// 		message: 'version',
-		// 		default: projectInfo.version
-		// 	}, {
-		// 		name: 'desc',
-		// 		message: projectInfo.desc
-		// 	}
-		// ])
+		projectInfo = await inquirer.prompt([
+			{
+				name: 'name',
+				message: 'project name',
+				default: projectInfo.name
+			}
+		])
 		const spinner = ora(chalk.blueBright(`cloning skeleton from github: ${skeletonUrl}`), { color: 'blue' })
 		spinner.start()
-		const tmpGitPath = path.join(projectPath, 'git_tmp')
+		const tmpGitPath = path.join(projectPath, 'tmp_git')
 		await new Promise((resolve, reject) => {
 			download(skeletonRepo,
 				tmpGitPath, (err) => {
@@ -83,15 +79,15 @@ Promise.resolve().then(async () => {
 					}
 				})
 		})
-
+		
 		await new Promise((resolve, reject) => {
 			let metadata = { projectInfo }
 			Metalsmith(process.cwd())
 				.metadata(metadata)
 				.clean(false)
-				.source(path.join(projectPath))
-				.ignore(path.join(projectPath, 'utils'), path.join(projectPath, 'entities'))
-				.destination(projectPath)
+				.source(path.join(tmpGitPath))
+				.ignore(path.join(tmpGitPath, 'utils'), path.join(tmpGitPath, 'entities'))
+				.destination(tmpGitPath)
 				.use((files, metalsmith, done) => {
 					const meta = metalsmith.metadata()
 					Object.keys(files).forEach(fileName => {
@@ -103,9 +99,19 @@ Promise.resolve().then(async () => {
 					err ? reject(err) : resolve();
 				})
 		})
-		!safeMode && rimraf.sync(path.join(projectPath, '.git'))
+		fse.copySync(tmpGitPath, projectPath, {overwrite: false, recursive: true, errorOnExist: true, filter: (src, dest) => {
+			return ![path.join(tmpGitPath, '.git')].includes(src)
+		}})
+		rimraf.sync(tmpGitPath)
+		console.log()
 		console.log(logSymbols.success, chalk.green(`project ${projectInfo.name} initialize success`))
+		console.log(`as the subsequent steps, you can ${safeMode || "go to the target directory and"} run commands as follow:
+
+npm install: install all dependencies.
+npm start: start skeleton server with environment 'local'.
+		`)
 	} catch (error) {
+		rimraf.sync(tmpGitPath)
 		!safeMode && rimraf.sync(projectPath)
 		console.error(logSymbols.error, chalk.red(`initialize failed. ${error}`))
 		console.error(logSymbols.error, chalk.red(error.stack))
