@@ -20,13 +20,29 @@ Promise.resolve().then(async () => {
 		.usage('<folder-name> the folder name that need to be created and initialized to be a web server')
 		.parse(process.argv)
 
-	const projectName = program.args[0]
-	if (!projectName) {
-		return program.help()
-	}
-
+	let projectName = program.args[0]
 	const pwd = process.cwd()
-	const projectPath = path.join(pwd, projectName)
+	let projectPath
+	let safeMode = false
+	if (!projectName) {
+		safeMode = true
+		console.log(logSymbols.warning, chalk.default.yellowBright('project name was not specified, project will be created in the current directory'))
+		projectName = path.basename(pwd)
+		answer = await inquirer.prompt([
+			{
+				name: 'useCurrentDir',
+				message: `all files in the current directory will be deleted! do you want to create a project named "${projectName}" in the current directory?`,
+				default: false,
+				type: 'confirm',
+				prefix: logSymbols.warning
+			}
+		])
+		if(!answer.useCurrentDir) {
+			return program.help()
+		}
+		projectPath = pwd
+	}
+	projectPath =  projectPath || path.join(pwd, projectName)
 	const dirs = fs.readdirSync(pwd)
 	const duplicatedProject = dirs.find(dir => dir === projectName && fs.statSync(path.join(pwd, projectName)).isDirectory())
 	if (duplicatedProject) {
@@ -54,9 +70,10 @@ Promise.resolve().then(async () => {
 		// ])
 		const spinner = ora(chalk.blueBright(`cloning skeleton from github: ${skeletonUrl}`), { color: 'blue' })
 		spinner.start()
+		const tmpGitPath = path.join(projectPath, 'git_tmp')
 		await new Promise((resolve, reject) => {
 			download(skeletonRepo,
-				projectPath, (err) => {
+				tmpGitPath, (err) => {
 					if (err) {
 						spinner.fail()
 						reject(err)
@@ -69,7 +86,6 @@ Promise.resolve().then(async () => {
 
 		await new Promise((resolve, reject) => {
 			let metadata = { projectInfo }
-			console.log(path.join(projectPath, 'entities'))
 			Metalsmith(process.cwd())
 				.metadata(metadata)
 				.clean(false)
@@ -87,10 +103,10 @@ Promise.resolve().then(async () => {
 					err ? reject(err) : resolve();
 				})
 		})
-		rimraf.sync(path.join(projectPath, '.git'))
+		!safeMode && rimraf.sync(path.join(projectPath, '.git'))
 		console.log(logSymbols.success, chalk.green(`project ${projectInfo.name} initialize success`))
 	} catch (error) {
-		rimraf.sync(projectPath)
+		!safeMode && rimraf.sync(projectPath)
 		console.error(logSymbols.error, chalk.red(`initialize failed. ${error}`))
 		console.error(logSymbols.error, chalk.red(error.stack))
 	}
