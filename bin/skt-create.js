@@ -26,6 +26,7 @@ Promise.resolve().then(async () => {
 	const pwd = process.cwd()
 	let projectPath
 	let safeMode = false
+	console.log(logSymbols.info, chalk.default.cyan('you are creating a new web application'))
 	if (!projectName) {
 		safeMode = true
 		console.log(logSymbols.warning, chalk.default.yellow('project name was not specified, project will be created in the current directory'))
