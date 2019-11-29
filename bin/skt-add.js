@@ -20,7 +20,8 @@ const skeletonRepo = 'github:Eriasuitor/node-server-skeleton#master'
 Promise.resolve().then(async () => {
 	program.version('1.0.0')
 		.usage('add <item>')
-		.command('api', 'add a api with controller and service')
+		.command('entity', 'add a entity')
+		.command('api', 'add a api with router, controller and service')
 		.command('method', 'add a method for specified controller or service')
 		.parse(process.argv)
 })
