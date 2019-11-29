@@ -18,7 +18,7 @@ const skeletonUrl = 'https://github.com/Eriasuitor/node-server-skeleton.git'
 const skeletonRepo = 'github:Eriasuitor/node-server-skeleton#master'
 
 Promise.resolve().then(async () => {
-	program.version('1.0.0')
+	program.version('1.1.1')
 		.usage('add <item>')
 		.command('entity', 'add a entity')
 		.command('api', 'add a api with router, controller and service')

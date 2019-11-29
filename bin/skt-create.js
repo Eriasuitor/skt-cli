@@ -18,7 +18,7 @@ const skeletonUrl = 'https://github.com/Eriasuitor/node-server-skeleton.git'
 const skeletonRepo = 'github:Eriasuitor/node-server-skeleton#master'
 
 Promise.resolve().then(async () => {
-	program.version('1.0.0')
+	program.version('1.1.1')
 		.usage('<folder-name> the folder name that need to be created and initialized to be a web server')
 		.parse(process.argv)
 

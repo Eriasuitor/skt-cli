@@ -10,7 +10,7 @@ const adder = require('../lib/adder')
 
 
 Promise.resolve().then(async () => {
-	program.version('1.0.0')
+	program.version('1.1.1')
 		.parse(process.argv)
 
 
